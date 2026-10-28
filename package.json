@@ -9,7 +9,7 @@
     "version": "0.1.0",
     "compiler": {
       "pond": 0,
-      "min-drop": 645
+      "min-drop": 650
     },
     "source": {
       "commit": "__COMMIT_SHA__",
