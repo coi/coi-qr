@@ -1,0 +1,36 @@
+module Qr;
+import "Qr.coi";
+import "Draw.coi";
+
+// a whole QR code as an SVG: the quiet zone on a light square, the body, the eye rings and the
+// pupils as their own paths, and the logo (an image URL) in the hole Look.logo clears. It fills
+// its parent's width. Colours come from CSS variables, so a parent sets them on itself:
+// --qr-body (currentColor by default), --qr-rings and --qr-pupils (the body's), --qr-back (white)
+pub component Code(string text, Level level = Level::M, Look look = Look{}, string logo = "") {
+    style {
+        svg { display: block; width: 100%; height: auto; }
+        .back { fill: var(--qr-back, #fff); }
+        .body { fill: var(--qr-body, currentColor); }
+        .rings { fill: var(--qr-rings, var(--qr-body, currentColor)); }
+        .pupils { fill: var(--qr-pupils, var(--qr-body, currentColor)); }
+    }
+
+    // each binding below asks again; a code is quick to make and the text rarely changes
+    def drawing() : Drawing { return draw(encode(text, level), look); }
+    def side() : int { return drawing().n + 8; }
+    // where the logo goes, centred in the hole with half a module of air around it
+    def logoAt() : float { return (drawing().n - drawing().hole).toFloat() / 2.0 + 0.5; }
+    def logoSide() : float { return (drawing().hole - 1).toFloat(); }
+
+    view {
+        <svg viewBox="-4 -4 ${side()} ${side()}" role="img" aria-label={text}>
+            <rect class="back" x="-4" y="-4" width="${side()}" height="${side()}" />
+            <path class="body" d={drawing().body} />
+            <path class="rings" d={drawing().rings} />
+            <path class="pupils" d={drawing().pupils} />
+            <if logo != "" && drawing().hole > 0>
+                <image href={logo} x="${logoAt()}" y="${logoAt()}" width="${logoSide()}" height="${logoSide()}" />
+            </if>
+        </svg>
+    }
+}

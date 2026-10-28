@@ -1,0 +1,104 @@
+module Qr;
+import "Qr.coi";
+
+// SVG paths for a code, one unit per module with the origin at its top left corner, so
+// viewBox="-4 -4 ${n + 8} ${n + 8}" shows it with the usual quiet zone.
+
+// the data modules: squares, round dots, or rounded blobs where neighbours join up
+pub enum Dots { Square, Round, Blob }
+// a finder's outer ring or its pupil. ZXing reads every one; OpenCV's detector only finds
+// Square rings for sure, Rounded ones most of the time and Round ones never
+pub enum Eye { Square, Rounded, Round }
+
+// logo: how much of the side to clear in the middle (0.25 a quarter), shrunk to what the error
+// correction can repair (Matrix.room); a code meant for a logo is best encoded at Q or H
+pub pod Look { Dots dots; Eye ring; Eye pupil; float logo; }
+
+// each part its own path, to fill with its own colour; n is the code's side, hole the side of the
+// cleared square, which starts at (n - hole) / 2 on both axes, 0 when nothing was cleared
+pub pod Drawing { int n; string body; string rings; string pupils; int hole; }
+
+// the whole code as one path of squares, runs in a row joined
+pub def path(Matrix c) : string {
+    Drawing d = draw(c, Look{});
+    return d.body + d.rings + d.pupils;
+}
+
+pub def draw(Matrix c, Look look) : Drawing {
+    int n = c.n;
+    mut int hole = (look.logo * n.toFloat()).toInt();
+    if (hole % 2 == 0) hole--;   // odd, so it sits on the middle module
+    if (hole > c.room) hole = c.room;
+    if (hole < 0) hole = 0;
+    int from = (n - hole) / 2;
+    float r = look.dots == Dots::Blob ? 0.5 : 0.0;
+
+    mut string body = "";
+    for y in 0:n {
+        mut int x = 0;
+        while (x < n) {
+            if (!shown(c, x, y, from, hole)) {
+                x++;
+                continue;
+            }
+            if (look.dots == Dots::Round) {
+                body += `M${x} ${y}.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0Z`;
+                x++;
+                continue;
+            }
+            mut int end = x + 1;
+            while (end < n && shown(c, end, y, from, hole)) end++;
+            // a blob rounds the corners with nothing next to them above or below
+            float tl = shown(c, x, y - 1, from, hole) ? 0.0 : r;
+            float tr = shown(c, end - 1, y - 1, from, hole) ? 0.0 : r;
+            float br = shown(c, end - 1, y + 1, from, hole) ? 0.0 : r;
+            float bl = shown(c, x, y + 1, from, hole) ? 0.0 : r;
+            body += rect(x.toFloat(), y.toFloat(), (end - x).toFloat(), 1.0, tl, tr, br, bl);
+            x = end;
+        }
+    }
+
+    mut string rings = "";
+    mut string pupils = "";
+    int[] xs = [0, n - 7, 0];
+    int[] ys = [0, 0, n - 7];
+    // from a radius of 1.5 up OpenCV stops finding the ring
+    float outer = look.ring == Eye::Square ? 0.0 : (look.ring == Eye::Rounded ? 1.0 : 3.5);
+    float inner = look.ring == Eye::Square ? 0.0 : (look.ring == Eye::Rounded ? 0.5 : 2.5);
+    float pr = look.pupil == Eye::Square ? 0.0 : (look.pupil == Eye::Rounded ? 1.0 : 1.5);
+    for i in 0:3 {
+        float x = xs[i].toFloat();
+        float y = ys[i].toFloat();
+        rings += rect(x, y, 7.0, 7.0, outer, outer, outer, outer) + cut(x + 1.0, y + 1.0, 5.0, inner);
+        pupils += rect(x + 2.0, y + 2.0, 3.0, 3.0, pr, pr, pr, pr);
+    }
+    return Drawing{n = n, body = body, rings = rings, pupils = pupils, hole = hole};
+}
+
+// a dark data module: not a finder's, not in the hole
+def shown(Matrix c, int x, int y, int from, int hole) : bool {
+    int n = c.n;
+    if (x < 0 || y < 0 || x >= n || y >= n || !c.dark[y * n + x]) return false;
+    if ((x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7)) return false;
+    return !(x >= from && x < from + hole && y >= from && y < from + hole);
+}
+
+// clockwise, each corner rounded by its own radius
+def rect(float x, float y, float w, float h, float tl, float tr, float br, float bl) : string {
+    return `M${x + tl} ${y}${edge("H", x + w - tr, x + tl)}${arc(tr, x + w, y + tr, 1)}${edge("V", y + h - br, y + tr)}${arc(br, x + w - br, y + h, 1)}` +
+           `${edge("H", x + bl, x + w - br)}${arc(bl, x, y + h - bl, 1)}${edge("V", y + tl, y + h - bl)}${arc(tl, x + tl, y, 1)}Z`;
+}
+
+// a square counter-clockwise, which cuts a hole in the shape around it
+def cut(float x, float y, float w, float r) : string {
+    return `M${x + r} ${y}${arc(r, x, y + r, 0)}${edge("V", y + w - r, y + r)}${arc(r, x + r, y + w, 0)}${edge("H", x + w - r, x + r)}` +
+           `${arc(r, x + w, y + w - r, 0)}${edge("V", y + r, y + w - r)}${arc(r, x + w - r, y, 0)}Z`;
+}
+
+// an H or V to a coordinate, left out when it's where the pen already is
+def edge(string cmd, float to, float at) : string { return to == at ? "" : `${cmd}${to}`; }
+
+def arc(float r, float x, float y, int sweep) : string {
+    if (r == 0.0) return "";
+    return `A${r} ${r} 0 0 ${sweep} ${x} ${y}`;
+}

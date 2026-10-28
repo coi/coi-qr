@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/coi-lang/registry/main/schema/package.schema.json",
+  "name": "coi/qr",
+  "schema-version": 1,
+  "repository": "https://github.com/coi/coi-qr",
+  "description": "QR codes: the module grid, or SVG paths with round dots, soft blobs, styled finder eyes and room for a logo.",
+  "keywords": ["qr", "qrcode", "svg", "barcode"],
+  "releases": [{
+    "version": "0.1.0",
+    "compiler": {
+      "pond": 0,
+      "min-drop": 645
+    },
+    "source": {
+      "commit": "__COMMIT_SHA__",
+      "sha256": "__TARBALL_SHA256__"
+    },
+    "releasedAt": "2026-10-28"
+  }],
+  "createdAt": "2026-10-28"
+}

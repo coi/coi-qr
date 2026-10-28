@@ -1,0 +1,37 @@
+module Qr;
+import "Qr.coi";
+import "Draw.coi";
+import "Code.coi";
+
+component Host {
+    mut string link = "https://example.com/j/KQ7RMX";
+    def longer() : void { link = "https://example.com/a/much/longer/link/that/needs/a/bigger/code/KQ7RMX"; }
+    view {
+        <div>
+            <button class="longer" onclick={longer}>x</button>
+            <Code text={link} level={Level::H} look={Look{dots = Dots::Blob, logo = 0.3}} logo="/logo.svg" />
+        </div>
+    }
+}
+
+test "the parts as paths over a light square, the quiet zone in the view box" {
+    Mounted m = mount(Code(text = "hello"));
+    expect(m.attr("svg", "viewBox") == "-4 -4 29 29");
+    expect(m.attr("svg", "aria-label") == "hello");
+    expect(m.attr("rect.back", "width") == "29");
+    expect(m.attr("path.body", "d") == draw(encode("hello", Level::M), Look{}).body);
+    expect(m.attr("path.rings", "d").startsWith("M0 0H7V7H0V0Z"));
+    expect(m.count("path") == 3);
+    expect(!m.has("image"));
+}
+
+test "level, look and logo, and a new text redraws" {
+    Mounted m = mount(Host());
+    expect(m.attr("svg", "viewBox") == "-4 -4 41 41");
+    expect(m.attr("image", "href") == "/logo.svg");
+    expect(m.attr("image", "width") == "8");
+    expect(m.attr("image", "x") == "12.5");
+    m.click(".longer");
+    expect(m.attr("svg", "viewBox") != "-4 -4 41 41");
+    expect(m.attr("path.body", "d") == draw(encode("https://example.com/a/much/longer/link/that/needs/a/bigger/code/KQ7RMX", Level::H), Look{dots = Dots::Blob, logo = 0.3}).body);
+}

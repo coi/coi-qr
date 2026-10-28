@@ -1,0 +1,15 @@
+// qr: QR codes in Coi, as a component or as the grid and SVG paths underneath.
+//
+//   import "@coi/qr";
+//
+//   <Qr::Code text="https://example.com" />
+//   <Qr::Code text={link} level={Qr::Level::H} look={Qr::Look{dots = Qr::Dots::Blob, logo = 0.3}} logo="/logo.svg" />
+//
+//   Qr::Matrix m = Qr::encode("https://example.com", Qr::Level::M);
+//   string d = Qr::path(m);                      // one path, one unit per module
+
+module Qr;
+
+pub import "src/Qr.coi";
+pub import "src/Draw.coi";
+pub import "src/Code.coi";
